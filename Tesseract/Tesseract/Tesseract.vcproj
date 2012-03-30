@@ -93,6 +93,7 @@
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="1"
+			UseOfMFC="1"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
 			>
@@ -229,7 +230,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\vshader.glsl"
+				RelativePath=".\vshader_floor.glsl"
+				>
+			</File>
+			<File
+				RelativePath=".\wireframe_vshader.glsl"
 				>
 			</File>
 		</Filter>

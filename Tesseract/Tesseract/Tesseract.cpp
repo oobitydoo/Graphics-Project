@@ -14,10 +14,9 @@ typedef Angel::vec4  color4;
 typedef Angel::vec4  point4;
 
 
-// Vertices of the "base_square" square
+// Vertices of the "base_square" floor
 vec4 base_square[4] = {vec4(-10.0, -0.75, -10.0, 1.0), vec4(-10.0, -0.75, 10.0, 1.0), vec4(10.0, -0.75, -10.0, 1.0), vec4(10.0, -0.75, 10.0, 1.0)};
-// These are not actually the normal vector for the floor, I just wanted better coloration for the floor
-vec4 base_square_normals[4] = {vec4(1.0, 1.0, 1.0, 0.0), vec4(1.0, 0.0, 1.0, 0.0), vec4(1.0, 1.0, 0.0, 0.0), vec4(0.0, 1.0, 1.0, 0.0)};
+vec4 base_square_colors[4] = {vec4(1.0, 1.0, 1.0, 0.0), vec4(1.0, 0.0, 1.0, 0.0), vec4(1.0, 1.0, 0.0, 0.0), vec4(0.0, 1.0, 1.0, 0.0)};
 
 
 // Parameters for LookAt -- spherical coordinates (r, phi, theta, w)
@@ -53,27 +52,24 @@ GLuint  projection; // projection matrix uniform shader variable location
 GLuint  sines;   // sines and cosines of 4D rotation angles
 GLuint  cosines;
 
-GLuint program;
-GLuint buffer, floor_buffer;
+GLuint floor_program, wireframe_program;
+GLuint solid, wireframe, floor_buffer;
 
 //----------------------------------------------------------------------------
 
-//int NumTimesToSubdivide = 0;
-//int VerticesUsed = 0;
-//const int NumCubes = 20*20*20*20; // 20^n cubes
-//const int NumTriangles = 12*NumCubes; // 12 triangles/cube
-//const int NumVertices = 3*NumTriangles;      // 3 vertices / triangle
-//
-//vec4 points[NumVertices];
-//vec4 normals[NumVertices];
-
 int  Index = 0;
+int VerticesUsed = 0;
+const int NumVertices = 6*24;      // 6 vertices / face
 
+vec4 points[NumVertices];
+vec4 normals[NumVertices];
+
+
+int  face_index = 0;
 int FaceVerticesUsed = 0;
 const int FaceVertices = 8*24;
 vec4 face_vertices[FaceVertices];
 
-int  face_index;
 
 //----------------------------------------------------------------------------
 
@@ -114,11 +110,11 @@ get_normal( const vec4& a, const vec4& b, const vec4& c )
 void
 triangle( const vec4& a, const vec4& b, const vec4& c )
 {
-	//vec4 n = get_normal( a, b, c );
- //   points[Index] = a;  normals[Index] = n;  Index++;
- //   points[Index] = b;  normals[Index] = n;  Index++;
- //   points[Index] = c;  normals[Index] = n;  Index++;
-	//VerticesUsed += 3;
+	vec4 n = get_normal( a, b, c );
+    points[Index] = a;  normals[Index] = n;  Index++;
+    points[Index] = b;  normals[Index] = n;  Index++;
+    points[Index] = c;  normals[Index] = n;  Index++;
+	VerticesUsed += 3;
 }
 
 /*****************************************************
@@ -155,8 +151,6 @@ face( const vec4& a, const vec4& b, const vec4& c, const vec4& d )
 void
 tesseract( const vec4& center, GLfloat face_dist )
 {
-	//VerticesUsed = 0;
-	//Index = 0;
 	face_index = 0;
 
 	vec4 a = center + vec4(-1.0*face_dist,-1.0*face_dist,-1.0*face_dist,1.0*face_dist);
@@ -207,9 +201,13 @@ tesseract( const vec4& center, GLfloat face_dist )
 	face(o,j,k,n);
 	
 
-	glBindBuffer( GL_ARRAY_BUFFER, buffer );
+	glBindBuffer( GL_ARRAY_BUFFER, wireframe );
     glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof(face_vertices), face_vertices );
-//    glBufferSubData( GL_ARRAY_BUFFER, sizeof(points), sizeof(normals), normals );
+	glBindBuffer( GL_ARRAY_BUFFER, 0 );
+
+	glBindBuffer( GL_ARRAY_BUFFER, solid );
+    glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof(points), points );
+	glBufferSubData( GL_ARRAY_BUFFER, sizeof(points), sizeof(normals), normals );
 	glBindBuffer( GL_ARRAY_BUFFER, 0 );
 }
 
@@ -237,131 +235,45 @@ cube( const vec4& center, GLfloat face_dist )
 
 //----------------------------------------------------------------------------
 
-void divide_cube( const vec3& center, const GLfloat face_dist, const int count )
-{
-	if(count > 0)
-	{
-		GLfloat temp = face_dist*2.0/3.0;
-		for( int i=-1; i<2; i++ )
-		{
-			for( int j=-1; j<2; j++ )
-			{
-				for( int k=-1; k<2; k++ )
-				{
-					if( !( (i==0 && j==0) || (i==0 && k==0) || (j==0 && k==0) ) )
-					{
-						vec3 offset( i*temp, j*temp, k*temp );
-						divide_cube( center+offset, temp/2.0, count - 1 );
-					}
-				}
-			}
-		}
-	}
-	else
-	{
-		cube(center, face_dist);
-	}
-}
-
-void inverted_sponge( const vec3& center, const GLfloat face_dist, const int count )
-{
-	if(count > 0)
-	{
-		GLfloat temp = face_dist*2.0/3.0;
-		for( int i=-1; i<2; i++ )
-		{
-			for( int j=-1; j<2; j++ )
-			{
-				for( int k=-1; k<2; k++ )
-				{
-					if( !( (i==0 && j==0) || (i==0 && k==0) || (j==0 && k==0) ) )
-					{
-						vec3 offset( i*temp, j*temp, k*temp );
-						inverted_sponge( center+offset, temp/2.0, count - 1 );
-					}
-					else
-					{
-						vec3 offset( i*temp, j*temp, k*temp );
-						cube( center+offset, temp/2.0 );
-					}
-				}
-			}
-		}
-	}
-}
-//----------------------------------------------------------------------------
-
-void
-make_fractal( void )
-{
-//	VerticesUsed = 0;
-//	Index = 0;
-
-	//switch( fract )
-	//{
-	//case SPONGE:
-//		divide_cube(vec3(0.0,0.0,0.0),0.5, NumTimesToSubdivide);
-	//	break;
-
-	//case INVERT:
-	//	inverted_sponge(vec3(0.0,0.0,0.0),0.5, NumTimesToSubdivide);
-	//	break;
-
-	//case TETRA:
-	//	divide_tetra( 
-	//		0.7*vec3( 0.0, 0.0, -1.0 ),
-	//		0.7*vec3( 0.0, 0.942809, 0.333333 ),
-	//		0.7*vec3( -0.816497, -0.471405, 0.333333 ),
-	//		0.7*vec3( 0.816497, -0.471405, 0.333333 ),
-	//			NumTimesToSubdivide );
-	//	break;
-	//}
-
-	//glBindBuffer( GL_ARRAY_BUFFER, buffer );
- //   glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof(points), points );
- //   glBufferSubData( GL_ARRAY_BUFFER, sizeof(points), sizeof(normals), normals );
-	//glBindBuffer( GL_ARRAY_BUFFER, 0 );
-}
-
-//----------------------------------------------------------------------------
-
 // OpenGL initialization
 void
 init()
 {
     // Load shaders and use the resulting shader program
-    program = InitShader( "vshader.glsl", "fshader.glsl" );
-    glUseProgram( program );
+	floor_program = InitShader( "vshader_floor.glsl", "fshader.glsl" );
+    wireframe_program = InitShader( "vshader_wireframe.glsl", "fshader.glsl" );
+    //glUseProgram( wireframe_program );
 
     // Create a vertex array object
 	GLuint vao;
     glGenVertexArrays( 1, &vao );
     glBindVertexArray( vao );
 
-    // Create and initialize buffer objects for fractal and floor
-    glGenBuffers( 1, &buffer );
-	glBindBuffer( GL_ARRAY_BUFFER, buffer );
+    // Create and initialize buffer objects for tesseract, wireframe, and floor
+    glGenBuffers( 1, &wireframe );
+	glBindBuffer( GL_ARRAY_BUFFER, wireframe );
 	glBufferData( GL_ARRAY_BUFFER, sizeof(face_vertices),
+		NULL, GL_STATIC_DRAW );
+	glBindBuffer( GL_ARRAY_BUFFER, 0 );
+	
+    glGenBuffers( 1, &solid );
+	glBindBuffer( GL_ARRAY_BUFFER, solid );
+	glBufferData( GL_ARRAY_BUFFER, sizeof(points) + sizeof(normals),
 		NULL, GL_STATIC_DRAW );
 	glBindBuffer( GL_ARRAY_BUFFER, 0 );
 
 	glGenBuffers( 1, &floor_buffer );
 	glBindBuffer( GL_ARRAY_BUFFER, floor_buffer );	
-	glBufferData( GL_ARRAY_BUFFER, sizeof(base_square) + sizeof(base_square_normals),
+	glBufferData( GL_ARRAY_BUFFER, sizeof(base_square) + sizeof(base_square_colors),
 		NULL, GL_STATIC_DRAW );
     glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof(base_square), base_square );
-    glBufferSubData( GL_ARRAY_BUFFER, sizeof(base_square), sizeof(base_square_normals), base_square_normals );
+    glBufferSubData( GL_ARRAY_BUFFER, sizeof(base_square), sizeof(base_square_colors), base_square_colors );
 	glBindBuffer( GL_ARRAY_BUFFER, 0 );
 
-    //make_fractal();
+
 	//cube( vec3(0.0, 0.0, 0.0), 0.5 );
 	tesseract( vec4(0.0,0.0,0.0,0.0), 0.3 );
 
-    model_view = glGetUniformLocation( program, "ModelView" );
-    projection = glGetUniformLocation( program, "Projection" );
-    sines = glGetUniformLocation( program, "sines" );
-    cosines = glGetUniformLocation( program, "cosines" );
-    
     glEnable( GL_DEPTH_TEST );
     glClearColor( 0.0, 0.0, 0.0, 1.0 ); 
 }
@@ -373,7 +285,7 @@ display( void )
 {
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-	GLuint vPosition, vNormal;
+	GLuint vPosition, vColor;
 
 	// Bring camera into Cartesian coordinates
 	vec4 cart_eye = Translate( eye_offset ) * sph_to_cart( sph_eye );
@@ -388,25 +300,34 @@ display( void )
 	mat4 mv = LookAt( cart_eye, cart_at, cart_up );
 	mat4 p = Perspective( fovy, aspect, zNear, zFar );
 
+	// Set up uniforms for the floor
+	glUseProgram( floor_program );
 	glUniformMatrix4fv( model_view, 1, GL_TRUE, mv );
 	glUniformMatrix4fv( projection, 1, GL_TRUE, p );
 
 	// Bind floor_buffer and display floor
 	glBindBuffer( GL_ARRAY_BUFFER, floor_buffer );
 
-	vPosition = glGetAttribLocation( program, "vPosition" );
+	vPosition = glGetAttribLocation( floor_program, "vPosition" );
     glEnableVertexAttribArray( vPosition );
     glVertexAttribPointer( vPosition, 4, GL_FLOAT, GL_FALSE, 0,
 			   BUFFER_OFFSET(0) );
 
-    vNormal = glGetAttribLocation( program, "vNormal" ); 
-    glEnableVertexAttribArray( vNormal );
-    glVertexAttribPointer( vNormal, 4, GL_FLOAT, GL_FALSE, 0,
+    vColor = glGetAttribLocation( floor_program, "vColor" ); 
+    glEnableVertexAttribArray( vColor );
+    glVertexAttribPointer( vColor, 4, GL_FLOAT, GL_FALSE, 0,
 			   BUFFER_OFFSET(sizeof(base_square)) );
 
-	//glDrawArrays( GL_TRIANGLE_STRIP, 0, sizeof(base_square)/sizeof(base_square[0]) );
+	glDrawArrays( GL_TRIANGLE_STRIP, 0, sizeof(base_square)/sizeof(base_square[0]) );
 	glBindBuffer( GL_ARRAY_BUFFER, 0 );
 
+	
+	glUseProgram( wireframe_program );
+    model_view = glGetUniformLocation( wireframe_program, "ModelView" );
+    projection = glGetUniformLocation( wireframe_program, "Projection" );
+    sines = glGetUniformLocation( wireframe_program, "sines" );
+    cosines = glGetUniformLocation( wireframe_program, "cosines" );
+    
 	// Calculate sines and cosines of rotation angles
 	GLfloat sine_values[6];
 	GLfloat cosine_values[6];
@@ -424,21 +345,21 @@ display( void )
 	glUniform1fv( cosines, 6, cosine_values );
 
 	// Bind buffer and display wireframe
-	glBindBuffer( GL_ARRAY_BUFFER, buffer );
+	glBindBuffer( GL_ARRAY_BUFFER, wireframe );
 
-	vPosition = glGetAttribLocation( program, "vPosition" );
+	vPosition = glGetAttribLocation( wireframe_program, "vPosition" );
     glEnableVertexAttribArray( vPosition );
     glVertexAttribPointer( vPosition, 4, GL_FLOAT, GL_FALSE, 0,
 			   BUFFER_OFFSET(0) );
+
+    glDrawArrays( GL_LINES, 0, FaceVerticesUsed );
+	glBindBuffer( GL_ARRAY_BUFFER, 0 );
+
 
     //vNormal = glGetAttribLocation( program, "vNormal" ); 
     //glEnableVertexAttribArray( vNormal );
     //glVertexAttribPointer( vNormal, 4, GL_FLOAT, GL_FALSE, 0,
 			 //  BUFFER_OFFSET(sizeof(points)) );
-
-    glDrawArrays( GL_LINES, 0, FaceVerticesUsed );
-	glBindBuffer( GL_ARRAY_BUFFER, 0 );
-
 	
     glutSwapBuffers();
 }
@@ -451,12 +372,6 @@ keyboard( unsigned char key, int x, int y )
 	vec4 temp;
 
 	switch( key ) {
-		/************************ Things to remove eventually ****************************/
-	case '1':
-//		NumTimesToSubdivide = (NumTimesToSubdivide + 1) % 5;
-		make_fractal();
-		break;
-		/*********************************************************************************/
 
 	case 033: // Escape Key
 	    exit( EXIT_SUCCESS );
@@ -509,6 +424,23 @@ keyboard( unsigned char key, int x, int y )
 //----------------------------------------------------------------------------
 
 void
+idle( void )
+{
+	for( int i=0; i<6; i++ )
+	{
+		Angles[i] += angle_step_ratios[i]*angle_step;
+		if (Angles[i] >= 360)
+		{
+			Angles[i] -= 360;
+		}
+	}
+
+	glutPostRedisplay();
+}
+
+//----------------------------------------------------------------------------
+
+void
 move_mouse( int x, int y )
 {
 	int width = glutGet(GLUT_WINDOW_WIDTH);
@@ -547,7 +479,8 @@ void mouse( int button, int state, int x, int y )
 	{
 		if( state == GLUT_DOWN )
 		{
-			glutMotionFunc( move_mouse );
+			//glutMotionFunc( move_mouse );
+			glutIdleFunc( idle );
 		}
 		else
 		{
@@ -559,23 +492,6 @@ void mouse( int button, int state, int x, int y )
 	{
 		glutMotionFunc( NULL );
 	}
-}
-
-//----------------------------------------------------------------------------
-
-void
-idle( void )
-{
-	for( int i=0; i<6; i++ )
-	{
-		Angles[i] += angle_step_ratios[i]*angle_step;
-		if (Angles[i] >= 360)
-		{
-			Angles[i] -= 360;
-		}
-	}
-
-	glutPostRedisplay();
 }
 
 //----------------------------------------------------------------------------
@@ -609,7 +525,6 @@ main( int argc, char **argv )
     glutKeyboardFunc( keyboard );
     glutReshapeFunc( reshape );
 	glutMouseFunc( mouse );
-	glutIdleFunc( idle );
 
     glutMainLoop();
     return 0;
