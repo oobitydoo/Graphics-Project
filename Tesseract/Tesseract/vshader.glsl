@@ -1,8 +1,6 @@
-#version 150 
-
-in  vec4 vPosition;
-in  vec4 vNormal;
-out vec4 color;
+attribute  vec4 vPosition;
+//attribute  vec4 vNormal;
+varying    vec4 color;
 
 // 6-component vectors, split into two vec3 objects
 // Angles for rotation about (XY, YZ, XZ, XW, YW, ZW)

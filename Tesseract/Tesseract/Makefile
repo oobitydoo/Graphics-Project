@@ -1,8 +1,8 @@
 CC = g++
 CFLAGS = -Wall 
-PROG = project2 
+PROG = tesseract 
 
-SRCS = Project2.cpp InitShader.cpp
+SRCS = Tesseract.cpp InitShader.cpp
 
 LIBS = -lglut -lGLU -lGL -lGLEW
 

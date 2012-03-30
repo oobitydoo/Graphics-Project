@@ -58,14 +58,14 @@ GLuint buffer, floor_buffer;
 
 //----------------------------------------------------------------------------
 
-int NumTimesToSubdivide = 0;
-int VerticesUsed = 0;
-const int NumCubes = 20*20*20*20; // 20^n cubes
-const int NumTriangles = 12*NumCubes; // 12 triangles/cube
-const int NumVertices = 3*NumTriangles;      // 3 vertices / triangle
-
-vec4 points[NumVertices];
-vec4 normals[NumVertices];
+//int NumTimesToSubdivide = 0;
+//int VerticesUsed = 0;
+//const int NumCubes = 20*20*20*20; // 20^n cubes
+//const int NumTriangles = 12*NumCubes; // 12 triangles/cube
+//const int NumVertices = 3*NumTriangles;      // 3 vertices / triangle
+//
+//vec4 points[NumVertices];
+//vec4 normals[NumVertices];
 
 int  Index = 0;
 
@@ -114,11 +114,11 @@ get_normal( const vec4& a, const vec4& b, const vec4& c )
 void
 triangle( const vec4& a, const vec4& b, const vec4& c )
 {
-	vec4 n = get_normal( a, b, c );
-    points[Index] = a;  normals[Index] = n;  Index++;
-    points[Index] = b;  normals[Index] = n;  Index++;
-    points[Index] = c;  normals[Index] = n;  Index++;
-	VerticesUsed += 3;
+	//vec4 n = get_normal( a, b, c );
+ //   points[Index] = a;  normals[Index] = n;  Index++;
+ //   points[Index] = b;  normals[Index] = n;  Index++;
+ //   points[Index] = c;  normals[Index] = n;  Index++;
+	//VerticesUsed += 3;
 }
 
 /*****************************************************
@@ -135,8 +135,8 @@ a-------b
 void
 face( const vec4& a, const vec4& b, const vec4& c, const vec4& d )
 {
-	triangle(a,b,d);
-	triangle(d,b,c);
+	//triangle(a,b,d);
+	//triangle(d,b,c);
 
 	face_vertices[face_index] = a; face_index++;
 	face_vertices[face_index] = b; face_index++;
@@ -155,8 +155,8 @@ face( const vec4& a, const vec4& b, const vec4& c, const vec4& d )
 void
 tesseract( const vec4& center, GLfloat face_dist )
 {
-	VerticesUsed = 0;
-	Index = 0;
+	//VerticesUsed = 0;
+	//Index = 0;
 	face_index = 0;
 
 	vec4 a = center + vec4(-1.0*face_dist,-1.0*face_dist,-1.0*face_dist,1.0*face_dist);
@@ -209,7 +209,7 @@ tesseract( const vec4& center, GLfloat face_dist )
 
 	glBindBuffer( GL_ARRAY_BUFFER, buffer );
     glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof(face_vertices), face_vertices );
-    glBufferSubData( GL_ARRAY_BUFFER, sizeof(points), sizeof(normals), normals );
+//    glBufferSubData( GL_ARRAY_BUFFER, sizeof(points), sizeof(normals), normals );
 	glBindBuffer( GL_ARRAY_BUFFER, 0 );
 }
 
@@ -294,13 +294,13 @@ void inverted_sponge( const vec3& center, const GLfloat face_dist, const int cou
 void
 make_fractal( void )
 {
-	VerticesUsed = 0;
-	Index = 0;
+//	VerticesUsed = 0;
+//	Index = 0;
 
 	//switch( fract )
 	//{
 	//case SPONGE:
-		divide_cube(vec3(0.0,0.0,0.0),0.5, NumTimesToSubdivide);
+//		divide_cube(vec3(0.0,0.0,0.0),0.5, NumTimesToSubdivide);
 	//	break;
 
 	//case INVERT:
@@ -317,10 +317,10 @@ make_fractal( void )
 	//	break;
 	//}
 
-	glBindBuffer( GL_ARRAY_BUFFER, buffer );
-    glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof(points), points );
-    glBufferSubData( GL_ARRAY_BUFFER, sizeof(points), sizeof(normals), normals );
-	glBindBuffer( GL_ARRAY_BUFFER, 0 );
+	//glBindBuffer( GL_ARRAY_BUFFER, buffer );
+ //   glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof(points), points );
+ //   glBufferSubData( GL_ARRAY_BUFFER, sizeof(points), sizeof(normals), normals );
+	//glBindBuffer( GL_ARRAY_BUFFER, 0 );
 }
 
 //----------------------------------------------------------------------------
@@ -341,7 +341,7 @@ init()
     // Create and initialize buffer objects for fractal and floor
     glGenBuffers( 1, &buffer );
 	glBindBuffer( GL_ARRAY_BUFFER, buffer );
-	glBufferData( GL_ARRAY_BUFFER, sizeof(points) + sizeof(normals),
+	glBufferData( GL_ARRAY_BUFFER, sizeof(face_vertices),
 		NULL, GL_STATIC_DRAW );
 	glBindBuffer( GL_ARRAY_BUFFER, 0 );
 
@@ -431,10 +431,10 @@ display( void )
     glVertexAttribPointer( vPosition, 4, GL_FLOAT, GL_FALSE, 0,
 			   BUFFER_OFFSET(0) );
 
-    vNormal = glGetAttribLocation( program, "vNormal" ); 
-    glEnableVertexAttribArray( vNormal );
-    glVertexAttribPointer( vNormal, 4, GL_FLOAT, GL_FALSE, 0,
-			   BUFFER_OFFSET(sizeof(points)) );
+    //vNormal = glGetAttribLocation( program, "vNormal" ); 
+    //glEnableVertexAttribArray( vNormal );
+    //glVertexAttribPointer( vNormal, 4, GL_FLOAT, GL_FALSE, 0,
+			 //  BUFFER_OFFSET(sizeof(points)) );
 
     glDrawArrays( GL_LINES, 0, FaceVerticesUsed );
 	glBindBuffer( GL_ARRAY_BUFFER, 0 );
@@ -453,7 +453,7 @@ keyboard( unsigned char key, int x, int y )
 	switch( key ) {
 		/************************ Things to remove eventually ****************************/
 	case '1':
-		NumTimesToSubdivide = (NumTimesToSubdivide + 1) % 5;
+//		NumTimesToSubdivide = (NumTimesToSubdivide + 1) % 5;
 		make_fractal();
 		break;
 		/*********************************************************************************/
