@@ -234,6 +234,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\vshader_solid.glsl"
+				>
+			</File>
+			<File
 				RelativePath=".\wireframe_vshader.glsl"
 				>
 			</File>

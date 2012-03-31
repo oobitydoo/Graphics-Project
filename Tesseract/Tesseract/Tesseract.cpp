@@ -52,7 +52,7 @@ GLuint  projection; // projection matrix uniform shader variable location
 GLuint  sines;   // sines and cosines of 4D rotation angles
 GLuint  cosines;
 
-GLuint floor_program, wireframe_program;
+GLuint solid_program, wireframe_program, floor_program;
 GLuint solid, wireframe, floor_buffer;
 
 //----------------------------------------------------------------------------
@@ -101,19 +101,27 @@ sph_to_cart( const vec4& v )
 vec4
 get_normal( const vec4& a, const vec4& b, const vec4& c )
 {
-	return normalize( cross( b-a, c-a ) );
+	return 
+//	return normalize( cross( b-a, c-a ) );
 }
 
 
 //----------------------------------------------------------------------------
+vec4 colors[24] = { vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0, 1.0, 0.0, 1.0), vec4(0.0, 0.0, 1.0, 1.0), vec4(1.0, 1.0, 0.0, 1.0),
+					vec4(1.0, 0.0, 1.0, 1.0), vec4(0.0, 1.0, 1.0, 1.0), vec4(0.1, 0.2, 0.3, 1.0), vec4(0.2, 0.1, 0.3, 1.0),
+					vec4(0.1, 0.3, 0.2, 1.0), vec4(0.2, 0.3, 0.1, 0.0), vec4(0.3, 0.2, 0.1, 1.0), vec4(0.3, 0.1, 0.2, 1.0),
+					vec4(0.7, 0.2, 1.0, 1.0), vec4(0.7, 1.0, 0.2, 1.0), vec4(0.2, 0.7, 1.0, 1.0), vec4(0.2, 1.0, 0.7, 1.0),
+					vec4(1.0, 0.2, 0.7, 1.0), vec4(1.0, 0.7, 0.2, 1.0), vec4(0.5, 0.3, 0.0, 1.0), vec4(0.5, 0.0, 0.3, 1.0),
+					vec4(0.0, 0.3, 0.5, 1.0), vec4(0.0, 0.5, 0.3, 1.0), vec4(0.3, 0.0, 0.5, 1.0), vec4(0.3, 0.5, 0.0, 1.0)
+				  };
 
 void
-triangle( const vec4& a, const vec4& b, const vec4& c )
+triangle( const vec4& a, const vec4& b, const vec4& c, int color )
 {
 	vec4 n = get_normal( a, b, c );
-    points[Index] = a;  normals[Index] = n;  Index++;
-    points[Index] = b;  normals[Index] = n;  Index++;
-    points[Index] = c;  normals[Index] = n;  Index++;
+    points[Index] = a;  normals[Index] = colors[color]; normals[Index].w = 0.3;  Index++;
+    points[Index] = b;  normals[Index] = colors[color]; normals[Index].w = 0.3;  Index++;
+    points[Index] = c;  normals[Index] = colors[color]; normals[Index].w = 0.3;  Index++;
 	VerticesUsed += 3;
 }
 
@@ -128,11 +136,14 @@ d-------c |
 a-------b
 
 ******************************************************/
+int face_num = 0;
+
 void
 face( const vec4& a, const vec4& b, const vec4& c, const vec4& d )
 {
-	//triangle(a,b,d);
-	//triangle(d,b,c);
+	triangle(a,b,d, face_num);
+	triangle(d,b,c, face_num);
+	face_num++;
 
 	face_vertices[face_index] = a; face_index++;
 	face_vertices[face_index] = b; face_index++;
@@ -240,8 +251,9 @@ void
 init()
 {
     // Load shaders and use the resulting shader program
-	floor_program = InitShader( "vshader_floor.glsl", "fshader.glsl" );
+    solid_program = InitShader( "vshader_solid.glsl", "fshader.glsl" );
     wireframe_program = InitShader( "vshader_wireframe.glsl", "fshader.glsl" );
+	floor_program = InitShader( "vshader_floor.glsl", "fshader.glsl" );
     //glUseProgram( wireframe_program );
 
     // Create a vertex array object
@@ -285,20 +297,27 @@ display( void )
 {
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-	GLuint vPosition, vColor;
+	GLuint vPosition, vColor, vNormal;
 
 	// Bring camera into Cartesian coordinates
 	vec4 cart_eye = Translate( eye_offset ) * sph_to_cart( sph_eye );
 	vec4 cart_at = Translate( eye_offset ) * sph_to_cart( sph_at );
 	vec4 cart_up = sph_to_cart( sph_up );
-
-	//std::cout << eye_offset << std::endl << 
-	//	cart_eye << std::endl <<
-	//	cart_at << std::endl <<
-	//	cart_up << std::endl << std::endl;
+    
 
 	mat4 mv = LookAt( cart_eye, cart_at, cart_up );
 	mat4 p = Perspective( fovy, aspect, zNear, zFar );
+
+	// Calculate sines and cosines of rotation angles
+	GLfloat sine_values[6];
+	GLfloat cosine_values[6];
+
+	for( int i=0; i<6; i++ )
+	{
+		sine_values[i] = sin(Angles[i]*DegreesToRadians);
+		cosine_values[i] = cos(Angles[i]*DegreesToRadians);
+	}
+
 
 	// Set up uniforms for the floor
 	glUseProgram( floor_program );
@@ -322,23 +341,13 @@ display( void )
 	glBindBuffer( GL_ARRAY_BUFFER, 0 );
 
 	
+	// Set up uniforms for the wireframe
 	glUseProgram( wireframe_program );
     model_view = glGetUniformLocation( wireframe_program, "ModelView" );
     projection = glGetUniformLocation( wireframe_program, "Projection" );
     sines = glGetUniformLocation( wireframe_program, "sines" );
     cosines = glGetUniformLocation( wireframe_program, "cosines" );
-    
-	// Calculate sines and cosines of rotation angles
-	GLfloat sine_values[6];
-	GLfloat cosine_values[6];
 
-	for( int i=0; i<6; i++ )
-	{
-		sine_values[i] = sin(Angles[i]*DegreesToRadians);
-		cosine_values[i] = cos(Angles[i]*DegreesToRadians);
-	}
-
-	// Update the uniform variables for the shaders (model_view now first applies transformations to the object)
 	glUniformMatrix4fv( model_view, 1, GL_TRUE, mv );
 	glUniformMatrix4fv( projection, 1, GL_TRUE, p );
 	glUniform1fv( sines, 6, sine_values );
@@ -356,10 +365,34 @@ display( void )
 	glBindBuffer( GL_ARRAY_BUFFER, 0 );
 
 
-    //vNormal = glGetAttribLocation( program, "vNormal" ); 
-    //glEnableVertexAttribArray( vNormal );
-    //glVertexAttribPointer( vNormal, 4, GL_FLOAT, GL_FALSE, 0,
-			 //  BUFFER_OFFSET(sizeof(points)) );
+	// Set up uniforms for the solid object
+	glUseProgram( solid_program );
+    model_view = glGetUniformLocation( solid_program, "ModelView" );
+    projection = glGetUniformLocation( solid_program, "Projection" );
+    sines = glGetUniformLocation( solid_program, "sines" );
+    cosines = glGetUniformLocation( solid_program, "cosines" );
+
+	glUniformMatrix4fv( model_view, 1, GL_TRUE, mv );
+	glUniformMatrix4fv( projection, 1, GL_TRUE, p );
+	glUniform1fv( sines, 6, sine_values );
+	glUniform1fv( cosines, 6, cosine_values );
+
+	// Bind buffer and display solid
+	glBindBuffer( GL_ARRAY_BUFFER, solid );
+
+	vPosition = glGetAttribLocation( solid_program, "vPosition" );
+    glEnableVertexAttribArray( vPosition );
+    glVertexAttribPointer( vPosition, 4, GL_FLOAT, GL_FALSE, 0,
+			   BUFFER_OFFSET(0) );
+    vNormal = glGetAttribLocation( solid_program, "vNormal" ); 
+    glEnableVertexAttribArray( vNormal );
+    glVertexAttribPointer( vNormal, 4, GL_FLOAT, GL_FALSE, 0,
+			   BUFFER_OFFSET(sizeof(points)) );
+
+    glDrawArrays( GL_TRIANGLES, 0, VerticesUsed );
+	glBindBuffer( GL_ARRAY_BUFFER, 0 );
+
+
 	
     glutSwapBuffers();
 }

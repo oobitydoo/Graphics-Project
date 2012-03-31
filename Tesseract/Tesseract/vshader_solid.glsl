@@ -1,5 +1,5 @@
 attribute  vec4 vPosition;
-//attribute  vec4 vNormal;
+attribute  vec4 vNormal;
 varying    vec4 color;
 
 // 6-component vectors, split into two vec3 objects
@@ -55,8 +55,9 @@ void main()
     temp.xyz = temp.xyz * temp.w;
     temp.w = 1.0;
     
-    color = vec4(1.0,1.0,1.0,1.0);
-    //color = vec4(abs(vNormal.x),abs(vNormal.y),abs(vNormal.z),1.0);
+    vec4 vColor = vNormal;
+    vColor = vColor / vColor.w;
+    color = vColor; //vec4(abs(vColor.x),abs(vColor.y),abs(vColor.z),1.0);
     gl_Position = Projection*ModelView*temp;
 }
 
